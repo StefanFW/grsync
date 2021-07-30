@@ -14,6 +14,7 @@ import (
 type Rsync struct {
 	Source      string
 	Destination string
+	RsyncOptions RsyncOptions
 
 	cmd *exec.Cmd
 }
@@ -231,8 +232,13 @@ func NewRsync(source, destination string, options RsyncOptions) *Rsync {
 	return &Rsync{
 		Source:      source,
 		Destination: destination,
+		RsyncOptions: options,
 		cmd:         exec.Command("rsync", arguments...),
 	}
+}
+
+func (r Rsync) GetFullArguments() []string {
+	return append(getArguments(r.RsyncOptions), r.Source, r.Destination)
 }
 
 func getArguments(options RsyncOptions) []string {
@@ -382,11 +388,13 @@ func getArguments(options RsyncOptions) []string {
 	}
 
 	if options.Rsh != "" {
-		arguments = append(arguments, "--rsh", options.Rsh)
+		arg := "--rsh='" + options.Rsh + "'"
+		arguments = append(arguments, arg)
 	}
 
 	if options.RsyncPath != "" {
-		arguments = append(arguments, "--rsync-path", options.RsyncPath)
+		arg := "--rsync-path='" + options.RsyncPath + "'"
+		arguments = append(arguments, arg)
 	}
 
 	if options.Existing {
