@@ -216,8 +216,8 @@ func (r Rsync) Run() error {
 		fmt.Printf("error")
 	} else {
 		readerInline := bufio.NewReader(pipe)
-		inline, err := readerInline.ReadString('\r')
-		for err == nil {
+		inline, _ := readerInline.ReadString('\r')
+		for inline != "" {
 			fmt.Printf("\r%s", inline)
 			inline, err = readerInline.ReadString('\r')
 		}
