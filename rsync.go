@@ -186,6 +186,9 @@ type RsyncOptions struct {
 	// Chown --chown="", chown on receipt.
 	Chown string
 
+	// merge rsync options like rsh to --rsh='xyz' or leave it split --rsh xyz
+	MergeRsyncOptions bool
+
 	// ipv4
 	IPv4 bool
 	// ipv6
@@ -208,7 +211,7 @@ func (r Rsync) StderrPipe() (io.ReadCloser, error) {
 }
 
 // Run start rsync task
-func (r Rsync) Run() error {
+func (r Rsync) Run() {
 	pipe, _ := r.StdoutPipe()
 	err := r.cmd.Start()
 
@@ -222,8 +225,6 @@ func (r Rsync) Run() error {
 			inline, err = readerInline.ReadString('\r')
 		}
 	}
-
-	return err
 }
 
 // NewRsync returns task with described options
@@ -388,13 +389,21 @@ func getArguments(options RsyncOptions) []string {
 	}
 
 	if options.Rsh != "" {
-		arg := "--rsh='" + options.Rsh + "'"
-		arguments = append(arguments, arg)
+		if options.MergeRsyncOptions {
+			arg := "--rsh='" + options.Rsh + "'"
+			arguments = append(arguments, arg)
+		} else {
+			arguments = append(arguments, "--rsh", options.Rsh)
+		}
 	}
 
 	if options.RsyncPath != "" {
-		arg := "--rsync-path='" + options.RsyncPath + "'"
-		arguments = append(arguments, arg)
+		if options.MergeRsyncOptions {
+			arg := "--rsync-path='" + options.RsyncPath + "'"
+			arguments = append(arguments, arg)
+		} else {
+			arguments = append(arguments, "--rsync-path", options.RsyncPath)
+		}
 	}
 
 	if options.Existing {
