@@ -14,6 +14,7 @@ import (
 type Rsync struct {
 	Source      string
 	Destination string
+	RsyncOptions RsyncOptions
 
 	cmd *exec.Cmd
 }
@@ -185,6 +186,9 @@ type RsyncOptions struct {
 	// Chown --chown="", chown on receipt.
 	Chown string
 
+	// merge rsync options like rsh to --rsh='xyz' or leave it split --rsh xyz
+	MergeRsyncOptions bool
+
 	// ipv4
 	IPv4 bool
 	// ipv6
@@ -207,7 +211,7 @@ func (r Rsync) StderrPipe() (io.ReadCloser, error) {
 }
 
 // Run start rsync task
-func (r Rsync) Run() error {
+func (r Rsync) Run() {
 	pipe, _ := r.StdoutPipe()
 	err := r.cmd.Start()
 
@@ -215,14 +219,12 @@ func (r Rsync) Run() error {
 		fmt.Printf("error")
 	} else {
 		readerInline := bufio.NewReader(pipe)
-		inline, err := readerInline.ReadString('\r')
-		for err == nil {
+		inline, _ := readerInline.ReadString('\r')
+		for inline != "" {
 			fmt.Printf("\r%s", inline)
 			inline, err = readerInline.ReadString('\r')
 		}
 	}
-
-	return err
 }
 
 // NewRsync returns task with described options
@@ -231,8 +233,13 @@ func NewRsync(source, destination string, options RsyncOptions) *Rsync {
 	return &Rsync{
 		Source:      source,
 		Destination: destination,
+		RsyncOptions: options,
 		cmd:         exec.Command("rsync", arguments...),
 	}
+}
+
+func (r Rsync) GetFullArguments() []string {
+	return append(getArguments(r.RsyncOptions), r.Source, r.Destination)
 }
 
 func getArguments(options RsyncOptions) []string {
@@ -382,11 +389,21 @@ func getArguments(options RsyncOptions) []string {
 	}
 
 	if options.Rsh != "" {
-		arguments = append(arguments, "--rsh", options.Rsh)
+		if options.MergeRsyncOptions {
+			arg := "--rsh='" + options.Rsh + "'"
+			arguments = append(arguments, arg)
+		} else {
+			arguments = append(arguments, "--rsh", options.Rsh)
+		}
 	}
 
 	if options.RsyncPath != "" {
-		arguments = append(arguments, "--rsync-path", options.RsyncPath)
+		if options.MergeRsyncOptions {
+			arg := "--rsync-path='" + options.RsyncPath + "'"
+			arguments = append(arguments, arg)
+		} else {
+			arguments = append(arguments, "--rsync-path", options.RsyncPath)
+		}
 	}
 
 	if options.Existing {
